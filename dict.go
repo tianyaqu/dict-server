@@ -147,7 +147,8 @@ func (d *StarDict) loadDict(idx, data string) (*radix.Tree, error) {
             fmt.Printf("read err %v n%d, word %s, start %d len %d \n", err, n, w, start, length)
             break
         }
-        fmt.Printf("---read word %s, start %d len %d desc %s \n", w, start, length, string(piece))
+        //fmt.Printf("---read word %s, start %d len %d desc %s \n", w, start, length, string(piece))
+        tree.Insert(w, string(piece))
     }
 
     return tree, nil
@@ -195,5 +196,9 @@ func (d *StarDict) loadMeta(file string) (*MetaInfo, error) {
 }
 
 func (d *StarDict) Lookup(term string) string {
+    if desc, ok := d.dict.Get(term); ok {
+        return desc.(string)
+    }
+
     return ""
 }
