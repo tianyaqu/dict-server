@@ -2,11 +2,15 @@ package main
 
 import (
     "fmt"
+    "flag"
 )
 
-func main() {
+var name = flag.String("name", "oald", "dict name")
 
-    dt := NewStarDict("./oald")
+func main() {
+    flag.Parse()
+
+    dt := NewStarDict("./" + *name)
 
     fmt.Printf("%s \n", dt)
 }

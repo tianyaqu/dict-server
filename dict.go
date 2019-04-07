@@ -5,9 +5,12 @@ import (
     "os"
     "strconv"
     "bufio"
+    "io"
     "strings"
     "reflect"
     "encoding/json"
+    "encoding/binary"
+    "github.com/armon/go-radix"
 )
 
 type Dict interface {
@@ -36,6 +39,7 @@ type MetaInfo struct {
 
 type StarDict struct {
    Meta *MetaInfo 
+   dict *radix.Tree
 }
 
 func NewStarDict(base string) *StarDict {
@@ -90,9 +94,63 @@ func (d *StarDict) Load(base string) error {
     }
 
     meta, err := d.loadMeta(ifo)
+    if err != nil {
+        return err
+    }
+
     d.Meta = meta
 
-    return err
+    dict, err := d.loadDict(idx, dt)
+    if err != nil {
+        return err
+    }
+
+    d.dict = dict
+
+    return nil
+}
+
+func (d *StarDict) loadDict(idx, data string) (*radix.Tree, error) {
+    f_idx, err := os.Open(idx)
+    if err != nil {
+        return nil, err
+    }
+    defer f_idx.Close()
+
+    f_data, err := os.Open(data)
+    if err != nil {
+        return nil, err
+    }
+    defer f_data.Close()
+
+    r_idx := bufio.NewReader(f_idx)
+    r_data := bufio.NewReader(f_data)
+
+    tree := radix.New()
+
+    i := 0
+    for {
+        b, err := r_idx.ReadBytes(byte(0))
+        if err != nil {
+            fmt.Printf("i %d b %v %v \n", i, b, err)
+            break
+        }
+        w := string(b[:len(b) - 1])
+        start, length := uint32(0), uint32(0)
+        err = binary.Read(r_idx, binary.BigEndian, &start)
+        err = binary.Read(r_idx, binary.BigEndian, &length)
+        piece := make([]byte, length)
+
+        //make sure read the exact bytes
+        n, err := io.ReadFull(r_data, piece)
+        if err != nil || uint32(n) < length {
+            fmt.Printf("read err %v n%d, word %s, start %d len %d \n", err, n, w, start, length)
+            break
+        }
+        fmt.Printf("---read word %s, start %d len %d desc %s \n", w, start, length, string(piece))
+    }
+
+    return tree, nil
 }
 
 func (d *StarDict) loadMeta(file string) (*MetaInfo, error) {
@@ -126,7 +184,6 @@ func (d *StarDict) loadMeta(file string) (*MetaInfo, error) {
             switch field.Type.Kind() {
                 case reflect.Uint32:
                     value, _ := strconv.ParseUint(v,10, 32)
-                    fmt.Printf("tag %s , value %s %d\n", tag, v, value)
                     ref_value.Elem().FieldByName(field.Name).SetUint(value)
                 case reflect.String:
                     ref_value.Elem().FieldByName(field.Name).SetString(v)
