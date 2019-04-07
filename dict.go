@@ -6,6 +6,8 @@ import (
     "strconv"
     "bufio"
     "io"
+    "path"
+    "io/ioutil"
     "strings"
     "reflect"
     "encoding/json"
@@ -17,6 +19,7 @@ type Dict interface {
     Name() string
     Load(string) error
     Lookup(string)string
+    Suggest(string, int)[]string
     String()string
 }
 
@@ -83,10 +86,29 @@ func (d *StarDict) String() string {
     return str
 }
 
+func (d *StarDict) GenDictName(base string) string {
+    files, err := ioutil.ReadDir(base)
+    if err != nil {
+        return ""
+    }
+
+    for _, file := range files {
+        if strings.HasSuffix(file.Name(), ".ifo") {
+            return strings.TrimSuffix(file.Name(), ".ifo")
+        }
+    }
+
+    return ""
+}
+
 func (d *StarDict) Load(base string) error {
-    ifo := base + ".ifo"
-    idx := base + ".idx"
-    dt := base + ".dict"
+    //ifo := base + ".ifo"
+    //idx := base + ".idx"
+    //dt := base + ".dict"
+    name := d.GenDictName(base)
+    ifo := path.Join(base, name + ".ifo")
+    idx := path.Join(base, name + ".idx")
+    dt := path.Join(base, name + ".dict")
 
     if !CheckIfExist(ifo, "") || !CheckIfExist(idx, "") || !CheckIfExist(dt, dt + ".dz") {
         fmt.Printf("file not enough info %s, idx %s, dt %s\n", ifo, idx, dt)
@@ -128,11 +150,11 @@ func (d *StarDict) loadDict(idx, data string) (*radix.Tree, error) {
 
     tree := radix.New()
 
-    i := 0
+    //i := 0
     for {
         b, err := r_idx.ReadBytes(byte(0))
         if err != nil {
-            fmt.Printf("i %d b %v %v \n", i, b, err)
+            //fmt.Printf("i %d b %v %v \n", i, b, err)
             break
         }
         w := string(b[:len(b) - 1])
@@ -196,9 +218,32 @@ func (d *StarDict) loadMeta(file string) (*MetaInfo, error) {
 }
 
 func (d *StarDict) Lookup(term string) string {
-    if desc, ok := d.dict.Get(term); ok {
-        return desc.(string)
+    if d.dict != nil {
+        if desc, ok := d.dict.Get(term); ok {
+            return desc.(string)
+        }
     }
 
     return ""
+}
+
+func (d *StarDict) Suggest (term string, maxCnt int) []string {
+    cnt := 0
+    suggestions := []string{}
+    if maxCnt == 0 {
+        return suggestions
+    }
+    if d.dict != nil {
+        d.dict.WalkPrefix(term, func(s string, v interface{}) bool {
+            suggestions = append(suggestions, term)
+            cnt += 1
+            if cnt < maxCnt {
+                return false
+            } else {
+                return true
+            }
+        })
+    }
+
+    return suggestions
 }

@@ -8,4 +8,5 @@ type Def struct {
 type Res struct {
     Term string     `json:"term"`
     Defs []*Def     `json:"definition,omitempty"`
+    Sugs []string   `json:"suggestions,omitempty"`
 }

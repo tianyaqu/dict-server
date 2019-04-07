@@ -7,19 +7,21 @@ import (
 
 var (
     name = flag.String("name", "oald", "dict name")
+    dir = flag.String("dir", "../data/", "dict data path")
     dictMap map[string]Dict
+    dictGuess map[string]GuessFunc
 )
 
 func init() {
-    dictMap = make(map[string]Dict)
-    dt := NewStarDict(*name)
-    dictMap[dt.Name()] = dt
+    registerDictGuesses()
 }
 
 func main() {
     flag.Parse()
 
+    dictMap = loadDictsFromDir(*dir)
     router := gin.Default()
     router.GET("/word/:term", handleLookup)
+    router.GET("/suggestions/:term", handleSuggestions)
     router.Run(":8080")
 }
