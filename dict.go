@@ -235,7 +235,7 @@ func (d *StarDict) Suggest (term string, maxCnt int) []string {
     }
     if d.dict != nil {
         d.dict.WalkPrefix(term, func(s string, v interface{}) bool {
-            suggestions = append(suggestions, term)
+            suggestions = append(suggestions, s)
             cnt += 1
             if cnt < maxCnt {
                 return false
